@@ -1,0 +1,76 @@
+plugins {
+    id 'java'
+    id 'java-library'
+}
+
+group 'io.github.karlatemp'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter-api:5.7.0'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-engine:5.7.0'
+
+    api 'io.github.karlatemp:unsafe-accessor:1.6.0'
+
+    api group: 'org.ow2.asm', name: 'asm'
+    api group: 'org.ow2.asm', name: 'asm-util'
+    api group: 'org.ow2.asm', name: 'asm-commons'
+    api group: 'org.ow2.asm', name: 'asm-tree'
+    api group: 'org.jetbrains', name: 'annotations'
+}
+
+// region
+
+({
+    def versionOverrides = [
+            '=====================================': '',
+            'io.netty'                             : '4.1.59.Final',
+            'org.jetbrains.kotlin'                 : '1.4.30',
+            'org.jetbrains:annotations'            : '21.0.0',
+            'org.junit.jupiter'                    : '5.7.2',
+            'org.ow2.asm'                          : '9.1',
+    ]
+    allprojects {
+        configurations.all { Configuration configuration ->
+            configuration.resolutionStrategy.eachDependency { dependency ->
+                def result1 = versionOverrides[dependency.requested.module.toString()]
+                if (result1 != null) {
+                    dependency.useVersion(result1)
+                    dependency.because("Custom override rule")
+                } else {
+                    def result2 = versionOverrides[dependency.requested.group]
+                    if (result2 != null) {
+                        dependency.useVersion(result2)
+                        dependency.because("Custom override rule")
+                    }
+                }
+            }
+        }
+    }
+})();
+
+// endregion
+
+test {
+    if (JavaVersion.current() <= JavaVersion.VERSION_15) {
+        jvmArgs += ['--illegal-access=deny']
+    }
+    useJUnitPlatform()
+}
+
+def compileJavaCArg = [
+        '--add-exports', 'java.base/jdk.internal.misc=ALL-UNNAMED',
+        '--add-exports', 'java.base/jdk.internal.access=ALL-UNNAMED',
+]
+
+// Only compile time
+compileTestJava {
+    options.compilerArgs.addAll(compileJavaCArg)
+}
+compileJava {
+    options.compilerArgs.addAll(compileJavaCArg)
+}
